@@ -17,32 +17,40 @@
 (* ------------------------------------------------------------------------ *)
 
 FCFeynmanPrepare::usage =
-"FCFeynmanPrepare[int,{q1,q2,...}] is an auxiliary function that \
-returns all necessary building for writing down a Feynman parametrization \
-of the given tensor or scalar multi-loop integral. The integral int can be Lorentzian \
-or Cartesian. The output of the function is a list given by \
-{U,F, pows, M, Q, J, N, r}, where U and F are the Symanzik polynomials, \
-with U = det M, while pows shows the powers of the occurring propagators. \
-The vector Q and the function J are the usual quantities appearing in the \
-definition of the F polynomial. If the integral has free indices, then N \
-encodes its tensor structure, while r gives its tensor rank. For scalar \
-integrals N is always 1 and r is 0. In N the F-polynomial is not substituted \
-but left as FCGV[\"F\"].
+"FCFeynmanPrepare[int, {q1, q2, ...}] is an auxiliary function that returns all
+necessary building for writing down a Feynman parametrization of the given
+tensor or scalar multi-loop integral. The integral int can be Lorentzian or
+Cartesian.
 
-To ensure a certain correspondence between propagators and Feynman parameters, \
-it is also possible to enter the integral as a list of propagators, e.g. \
-FCFeynmanPrepare[{FAD[{q,m1}],FAD[{q-p,m2}],SPD[p,q]},{q}]. In this case the \
+The output of the function is a list given by {U,F, pows, M, Q, J, N, r},
+where U and F are the Symanzik polynomials, with $U = det M$, while pows
+contains the powers of the occurring propagators. The vector Q and the
+function J are the usual quantities appearing in the definition of the F
+polynomial.
+
+If the integral has free indices, then N encodes its tensor structure, while r
+gives its tensor rank. For scalar integrals N is always 1 and r is 0. In N the
+F-polynomial is not substituted but left as FCGV[\"F\"].
+
+To ensure a certain correspondence between propagators and Feynman parameters,
+it is also possible to enter the integral as a list of propagators, e.g.
+FCFeynmanPrepare[{FAD[{q,m1}],FAD[{q-p,m2}],SPD[p,q]},{q}]. In this case the
 tensor part of the integral should be the very last element of the list.
 
-The definitions of M, Q, J and N follow Eq. 4.17 from the PhD Thesis of \
-Stefan Jahn (Jahn:2020tpj, http://mediatum.ub.tum.de/?id=1524691) and \
-arXiv:1010.1667.
+It is also possible to invoke the function as FCFeynmanPrepare[GLI[...],
+FCTopology[...]] or FCFeynmanPrepare[FCTopology[...]]. Notice that in this
+case the value of the option FinalSubstitutions is ignored, as replacement
+rules will be extracted directly from the definition of the topology.
 
-The algorithm for deriving the UF-parametrization of a loop integral \
-was adopted from the UF generator available in multiple codes of \
-Alexander Smirnov, such as FIESTA (arXiv:1511.03614) and FIRE \
-(arXiv:1901.07808). The code UF.m was also mentioned in the book \
-\"Analytic Tools for Feynman Integrals\" by Vladimir Smirnov, Chapter 2.3";
+The definitions of M, Q, J and N follow from Eq. 4.17 in the [PhD Thesis of
+Stefan Jahn](http://mediatum.ub.tum.de/?id=1524691) and
+[arXiv:1010.1667](https://arxiv.org/abs/1010.1667).The algorithm for deriving
+the UF-parametrization of a loop integral was adopted from the UF generator
+available in multiple codes of Alexander Smirnov, such as FIESTA
+([arXiv:1511.03614](https://arxiv.org/abs/1511.03614)) and FIRE
+([arXiv:1901.07808](https://arxiv.org/abs/1901.07808)). The code UF.m is also
+mentioned in the book \"Analytic Tools for Feynman Integrals\" by Vladimir
+Smirnov, Chapter 2.3.";
 
 FCFeynmanPrepare::failmsg =
 "Error! FCFeynmanPrepare has encountered a fatal problem and must abort the computation. \
@@ -58,6 +66,7 @@ fcszVerbose::usage="";
 null1::usage="";
 null2::usage="";
 isCartesian::usage="";
+optEuclidean::usage="";
 Gt::usage="";
 Pt::usage="";
 li::usage="";
@@ -70,29 +79,128 @@ Options[FCFeynmanPrepare] = {
 	CartesianIndexNames		-> FCGV["i"],
 	Check					-> True,
 	Collecting				-> True,
+	"Euclidean"				-> False,
 	FCE						-> False,
 	FCI						-> False,
 	FCVerbose				-> False,
 	Factoring 				-> {Factor2, 5000},
 	FinalSubstitutions		-> {},
 	Indexed					-> True,
+	LoopMomenta				-> Function[{x,y},FCGV["lmom"][x,y]],
 	LorentzIndexNames		-> FCGV["mu"],
 	Names					-> FCGV["x"],
 	Reduce					-> False,
+	SortBy 					-> Function[x, x[[2]] < 0],
 	TimeConstrained 		-> 3
 };
 
-FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
+FCFeynmanPrepare[gli_, topo_FCTopology, opts:OptionsPattern[]] :=
+	Block[{int,optFinalSubstitutions, lmomsHead, lmoms, optLoopMomenta},
+
+		optLoopMomenta = OptionValue[LoopMomenta];
+		lmomsHead = Head[optLoopMomenta[1,1]];
+
+		int = FCLoopFromGLI[gli, topo, FCI->OptionValue[FCI], LoopMomenta->optLoopMomenta];
+
+		If[	OptionValue[FCI],
+			optFinalSubstitutions = topo[[5]],
+			optFinalSubstitutions = FCI[topo[[5]]]
+		];
+
+		If[	!FreeQ[int,lmomsHead],
+			lmoms = Join[Cases2[int,lmomsHead],topo[[3]]],
+			lmoms = topo[[3]]
+		];
+
+		FCFeynmanPrepare[int, lmoms, Join[{FCI->True,FinalSubstitutions->optFinalSubstitutions},
+			FilterRules[{opts}, Except[FCI | FinalSubstitutions]]]]
+	]/; MatchQ[gli, (_GLI | Power[_GLI, _] | HoldPattern[Times][(_GLI | Power[_GLI, _]) ..])];
+
+
+FCFeynmanPrepare[glis_, topos:{__FCTopology}, opts:OptionsPattern[]] :=
+	Block[{	ints, finalSubstitutions, relTopos, lmomsList, optLoopMomenta,
+			lmomsHead},
+
+		If[	OptionValue[FCVerbose]===False,
+			fcszVerbose=$VeryVerbose,
+			If[MatchQ[OptionValue[FCVerbose], _Integer],
+				fcszVerbose=OptionValue[FCVerbose]
+			];
+		];
+
+
+		optLoopMomenta = OptionValue[LoopMomenta];
+		lmomsHead = Head[optLoopMomenta[1,1]];
+
+		ints = FCLoopFromGLI[glis, topos, FCI->OptionValue[FCI], LoopMomenta->optLoopMomenta];
+
+		(*relTopos is a list of lists*)
+		relTopos= FCLoopSelectTopology[{#},topos]&/@glis;
+
+		If[	!MatchQ[relTopos,{{__FCTopology}..}],
+			Message[FCFeynmanPrepare::failmsg, "Something went wrong when extracting topologies relevant for the given GLIs."];
+			Abort[]
+		];
+
+		finalSubstitutions = Flatten /@ Map[Function[x, Map[#[[5]] &, x]], relTopos];
+
+		(*TODO: Tricky, if different topologies define different substitutions w.r.t. to
+		the same scalar products ...*)
+
+		lmomsList = Union[Flatten[#[[3]]&/@Flatten[relTopos]]];
+
+		If[	!FreeQ[ints,lmomsHead],
+			lmomsList = Join[lmomsList,Cases2[ints,lmomsHead]];
+		];
+
+		FCPrint[1,"FCFeynmanPrepare: All loop momenta: ", lmomsList, FCDoControl->fcszVerbose];
+
+
+		If[	!OptionValue[FCI],
+			finalSubstitutions = FCI[finalSubstitutions]
+		];
+
+		MapThread[FCFeynmanPrepare[#1, lmomsList, Join[{FCI->True,FinalSubstitutions->#2},
+			FilterRules[{opts}, Except[FCI | FinalSubstitutions]]]]&,{ints,finalSubstitutions}]
+	]/; MatchQ[glis,{(_GLI | Power[_GLI, _] | HoldPattern[Times][(_GLI | Power[_GLI, _]) ..]) ..}];
+
+FCFeynmanPrepare[toposRaw: {__FCTopology}, opts:OptionsPattern[]]:=
+	FCFeynmanPrepare[#, opts]&/@toposRaw;
+
+FCFeynmanPrepare[topoRaw_FCTopology, opts:OptionsPattern[]] :=
+	Block[{topo,optFinalSubstitutions},
+
+		optFinalSubstitutions	= OptionValue[FinalSubstitutions];
+
+		If[	OptionValue[FCI],
+			topo = topoRaw,
+			topo = FCI[topoRaw]
+		];
+
+		If[	!FCLoopValidTopologyQ[topo],
+			Message[FCFeynmanPrepare::failmsg, "The supplied topology is incorrect."];
+			Abort[]
+		];
+
+		FCFeynmanPrepare[topo[[2]], topo[[3]], Join[{FCI->True,FinalSubstitutions->topo[[5]]},
+			FilterRules[{opts}, Except[FCI | FinalSubstitutions]]]]
+
+	];
+
+
+
+FCFeynmanPrepare[expr_/;FreeQ[expr,{GLI,FCTopology}], lmomsRaw_List /; !OptionQ[lmomsRaw], OptionsPattern[]] :=
 	Block[{	feynX, propProduct, tmp, symF, symU, ex, spd, qkspd, mtmp,
-			matrix, nDenoms, res, constraint, tmp0, powers,
+			matrix, nDenoms, res, constraint, tmp0, powers, lmoms,
 			optFinalSubstitutions, optNames, aux1, aux2, nProps, fpJ, fpQ,
-			null1, null2, tensorPart, scalarPart, time},
+			null1, null2, tensorPart, scalarPart, time, tcHideRule={}, sortBy, pref},
 
 		optNames				= OptionValue[Names];
 		optFinalSubstitutions	= OptionValue[FinalSubstitutions];
 		li						= OptionValue[LorentzIndexNames];
 		ci						= OptionValue[CartesianIndexNames];
 		tensorRank 				= 0;
+		optEuclidean			= OptionValue["Euclidean"];
 
 		If[	OptionValue[FCVerbose]===False,
 			fcszVerbose=$VeryVerbose,
@@ -106,13 +214,20 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 			{ex,optFinalSubstitutions} = FCI[{expr,optFinalSubstitutions}]
 		];
 
+		FCPrint[1,"FCFeynmanPrepare: Entering. ", FCDoControl->fcszVerbose];
+		FCPrint[3,"FCFeynmanPrepare: Entering  with: ", ex, FCDoControl->fcszVerbose];
+
+		lmoms = Select[lmomsRaw,!FreeQ[ex,#]&];
+
+		FCPrint[3,"FCFeynmanPrepare: Relevant loop momenta: ", lmoms, FCDoControl->fcszVerbose];
+
 		If [!FreeQ2[$ScalarProducts, lmoms],
 			Message[FCFeynmanPrepare::failmsg, "Some of the loop momenta have scalar product rules attached to them."];
 			Abort[]
 		];
 
 		If[	!FCDuplicateFreeQ[lmoms],
-			Message[FCFeynmanPrepare::failmsg, "The list of loop momenta may not contain duplicate entries."];
+			Message[FCFeynmanPrepare::failmsg, "The list of the loop momenta may not contain duplicate entries."];
 			Abort[]
 		];
 
@@ -122,8 +237,6 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 
 		];
 
-		FCPrint[1,"FCFeynmanPrepare: Entering. ", FCDoControl->fcszVerbose];
-		FCPrint[3,"FCFeynmanPrepare: Entering  with: ", ex, FCDoControl->fcszVerbose];
 
 		Which[
 			!FreeQ2[ex, {Momentum, LorentzIndex}] && FreeQ2[ex, {CartesianMomentum,CartesianIndex}],
@@ -141,7 +254,12 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 			Abort[]
 		];
 
-		dim = FCGetDimensions[ex];
+		If[isCartesian && !FreeQ[ex,ExplicitLorentzIndex],
+			tcHideRule = Map[Rule[TemporalPair[TemporalMomentum[#],ExplicitLorentzIndex[0]], Unique["loop0"]] &, lmoms];
+			ex = ex/. a_TemporalPair :> ExpandScalarProduct[a,FCI->True] /. tcHideRule;
+		];
+
+		dim = FCGetDimensions[ex/. {TemporalPair[_,ExplicitLorentzIndex[0]]:>Unique[]}] ;
 
 		If[	Length[dim]=!=1,
 			Message[FCFeynmanPrepare::failmsg,"The loop integrals contains momenta in different dimensions."];
@@ -170,8 +288,16 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 		];
 
 		time=AbsoluteTime[];
+
+		If[	TrueQ[Head[ex]===List],
+			sortBy = Identity,
+			sortBy = OptionValue[SortBy]
+		];
+
 		FCPrint[1, "FCFeynmanPrepare: Calling FCLoopBasisExtract.", FCDoControl -> fcszVerbose];
-		tmp = FCLoopBasisExtract[scalarPart, lmoms, SetDimensions->{dim}, SortBy -> Function[x, x[[2]] < 0]];
+
+		tmp = FCLoopBasisExtract[scalarPart, lmoms, SetDimensions->{dim}, SortBy -> sortBy];
+
 		FCPrint[1, "FCFeynmanPrepare: FCLoopBasisExtract done, timing: ", N[AbsoluteTime[] - time, 4], FCDoControl->fcszVerbose];
 
 		FCPrint[3,"FCFeynmanPrepare: List of denominators: ", tmp, FCDoControl->fcszVerbose];
@@ -217,16 +343,16 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 			}
 		];
 
-		fpJ = SelectFree2[tmp0 + null1 + null2,{spd,qkspd}] /. null1|null2 -> 0;
+		fpJ = SelectFree2[tmp0,{spd,qkspd}];
 		FCPrint[3,"FCFeynmanPrepare: fpJ: ", fpJ, FCDoControl->fcszVerbose];
 
-		fpQ = SelectNotFree2[tmp0 + null1 + null2,qkspd] /. null1|null2 -> 0;
+		fpQ = SelectNotFree2[tmp0,qkspd];
 
 		FCPrint[3,"FCFeynmanPrepare: raw fpQ: ", fpQ, FCDoControl->fcszVerbose];
 
 		If[ !isCartesian,
-			fpQ = Map[ReplaceAll[SelectNotFree2[(-1/2) fpQ + null1 + null2, #], qkspd[a_, #] :> Pair[Momentum[a,dim], LorentzIndex[li,dim]]] &, lmoms],
-			fpQ = Map[ReplaceAll[SelectNotFree2[(-1/2) fpQ + null1 + null2, #], qkspd[a_, #] :> CartesianPair[CartesianMomentum[a,dim], CartesianIndex[ci,dim]]] &, lmoms];
+			fpQ = Map[ReplaceAll[SelectNotFree2[(-1/2) fpQ, #], qkspd[a_, #] :> Pair[Momentum[a,dim], LorentzIndex[li,dim]]] &, lmoms],
+			fpQ = Map[ReplaceAll[SelectNotFree2[(-1/2) fpQ, #], qkspd[a_, #] :> CartesianPair[CartesianMomentum[a,dim], CartesianIndex[ci,dim]]] &, lmoms];
 		];
 		FCPrint[3,"FCFeynmanPrepare: final fpQ: ", fpQ, FCDoControl->fcszVerbose];
 
@@ -240,7 +366,7 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 
 		FCPrint[3,"FCFeynmanPrepare: tmp0: ", tmp0, FCDoControl->fcszVerbose];
 
-		mtmp = SelectNotFree2[tmp0 + null1 + null2, spd];
+		mtmp = SelectNotFree2[tmp0, spd];
 
 		FCPrint[3,"FCFeynmanPrepare: mtmp: ", mtmp, FCDoControl->fcszVerbose];
 
@@ -267,18 +393,26 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 			tensorPart=buildN[tensorPart, symU, matrix, fpQ, powers, lmoms];
 			FCPrint[1, "FCFeynmanPrepare: N ready, timing: ", N[AbsoluteTime[] - time, 4], FCDoControl->fcszVerbose];
 		];
-
-		res = {symU, -Together[symU symF], powers, matrix, fpQ, fpJ, tensorPart, tensorRank};
-
+		If[	!isCartesian && !optEuclidean,
+			res = {symU, -Together[symU symF], powers, matrix, fpQ, fpJ, tensorPart, tensorRank},
+			(*in the case of a Euclidean integral there is no Wick rotation and we pick up -Q^T.M^(-1).Q+J *)
+			res = {symU, Together[symU symF], powers, matrix, fpQ, fpJ, tensorPart, tensorRank};
+		];
 
 
 		If[ OptionValue[Check],
 			time=AbsoluteTime[];
 			FCPrint[1, "FCFeynmanPrepare: Checking the results.", FCDoControl -> fcszVerbose];
 			(* Check F *)
-			If[Factor[Together[symU*(ExpandScalarProduct[Contract[fpQ.Inverse[matrix].fpQ,FCI->True],FCI->True]-fpJ)-res[[2]]]]=!=0,
-				Message[FCFeynmanPrepare::failmsg,"The obtained Q and J are incorrect."];
-				Abort[]
+			If[	!isCartesian && !optEuclidean,
+				If[Factor[Together[symU*(ExpandScalarProduct[Contract[fpQ.Inverse[matrix].fpQ,FCI->True],FCI->True]-fpJ)-res[[2]]]]=!=0,
+					Message[FCFeynmanPrepare::failmsg,"The obtained Q and J are incorrect."];
+					Abort[]
+				],
+				If[Factor[Together[symU*(-ExpandScalarProduct[Contract[fpQ.Inverse[matrix].fpQ,FCI->True],FCI->True]+fpJ)-res[[2]]]]=!=0,
+					Message[FCFeynmanPrepare::failmsg,"The obtained Q and J are incorrect."];
+					Abort[]
+				]
 			];
 
 			(* Check U *)
@@ -289,10 +423,15 @@ FCFeynmanPrepare[expr_, lmoms_List /; ! OptionQ[lmoms], OptionsPattern[]] :=
 			FCPrint[1, "FCFeynmanPrepare: Checks done, timing: ", N[AbsoluteTime[] - time, 4], FCDoControl->fcszVerbose]
 		];
 
+		If[	tcHideRule=!={},
+			res = res /. (Reverse /@ tcHideRule)
+		];
+
 		FCPrint[3,"FCFeynmanPrepare: Preliminary result: ", res, FCDoControl->fcszVerbose];
 
+		(*q2 example!*)
 		If[	optFinalSubstitutions=!={},
-			res = res /. optFinalSubstitutions
+			res = res //. optFinalSubstitutions
 		];
 
 
@@ -412,7 +551,11 @@ buildN[tensorPart_, U_, M_, fpQ_, powers_, lmoms_List]:=
 		];
 
 		tensorTermPrefacList = Cases2[tensorListEval,tensorTermPrefac];
-		tensorTermPrefacListEval = tensorTermPrefacList /. tensorTermPrefac[m_Integer] :> (-1/2)^m FCGV["F"]^m Gamma[nM - nLoops*dim/2 - m];
+
+		If[	!isCartesian && !optEuclidean,
+			tensorTermPrefacListEval = tensorTermPrefacList /. tensorTermPrefac[m_Integer] :> (-1/2)^m FCGV["F"]^m Gamma[nM - nLoops*dim/2 - m],
+			tensorTermPrefacListEval = tensorTermPrefacList /. tensorTermPrefac[m_Integer] :> (1/2)^m FCGV["F"]^m Gamma[nM - nLoops*dim/2 - m]
+		];
 
 		tensorListEval = tensorListEval /. Dispatch[Thread[Rule[tensorTermPrefacList,tensorTermPrefacListEval]]];
 

@@ -17,11 +17,11 @@
 
 
 (* ------------------------------------------------------------------------ *)
-Begin["`Package`"]
+Begin["`Package`"];
 
 End[]
 
-Begin["`SharedObjectsTypesetting`Private`"]
+Begin["`SharedObjectsTypesetting`Private`"];
 
 dootpow::usage="";
 csp::usage="";
@@ -946,8 +946,8 @@ MakeBoxes[pref_. SFAD[a__, opts:OptionsPattern[]], TraditionalForm] :=
 	ToBoxes[pref/(Apply[DOT, Map[sfadTypeset[# /. DOT[x_,y_]:> sp[x,y], OptionValue[SFAD,{opts},Dimension], OptionValue[SFAD,{opts},EtaSign]]&, {a}]] /. DOT -> dootpow), TraditionalForm]/; FCPatternFreeQ[{a,opts}];
 
 
-FCGV /: MakeBoxes[FCGV[a_String, opts:OptionsPattern[]], TraditionalForm]/; OptionValue[FCGV,{opts},SilentTypeSetting] :=
-	ToBoxes[a, TraditionalForm];
+GLI /: MakeBoxes[GLI[id_, indices_List], TraditionalForm] :=
+	RowBox[{SuperscriptBox["G", ToBoxes[id]], "(", TBox[Sequence @@ Riffle[indices, ","]], ")"}];
 
 FeynAmp /:
 	MakeBoxes[FeynAmp[q__Symbol, amp_], TraditionalForm ]:=
@@ -1138,7 +1138,7 @@ GaugeXi /:
 
 GaugeXi /:
 	MakeBoxes[GaugeXi, TraditionalForm]:=
-		TagBox["\[Xi]", TraditionalForm]
+		TagBox["\[Xi]", TraditionalForm];
 
 GluonField /:
 	MakeBoxes[GluonField, TraditionalForm]:=
@@ -1268,7 +1268,7 @@ Nf /:
 
 OPE /:
 	MakeBoxes[OPE, TraditionalForm]:=
-		"\[CapitalOmega]"
+		"\[CapitalOmega]";
 
 (*    Typesetting for the metric tensor.    *)
 (* ------------------------------------------------------------------------ *)
@@ -1662,6 +1662,25 @@ SPE /:
 	MakeBoxes[SPE[a_, b_], TraditionalForm]:=
 		ToBoxes[Pair[Momentum[a,D-4],Momentum[b,D-4]], TraditionalForm];
 
+
+MakeBoxes[Power[SPD[a_, a_],n_Integer?Positive], TraditionalForm] :=
+	If[ Head[a]===Plus,
+		RowBox[{SuperscriptBox[TBox["(",Momentum[a, D],")"],2 n]}],
+		SuperscriptBox[TBox[Momentum[a,D]],2 n]
+	];
+
+MakeBoxes[Power[SP[a_, a_],n_Integer?Positive], TraditionalForm] :=
+	If[ Head[a]===Plus,
+		RowBox[{SuperscriptBox[TBox["(",Momentum[a],")"],2 n]}],
+		SuperscriptBox[TBox[Momentum[a]],2 n]
+	];
+
+MakeBoxes[Power[SPE[a_, a_],n_Integer?Positive], TraditionalForm] :=
+	If[ Head[a]===Plus,
+		RowBox[{SuperscriptBox[TBox["(",Momentum[a,D-4],")"],2 n]}],
+		SuperscriptBox[TBox[Momentum[a,D-4]],2 n]
+	];
+
 (* ------------------------------------------------------------------------ *)
 
 Spinor /:
@@ -1744,19 +1763,19 @@ StandardMatrixElement /:
 
 SUND /:
 	MakeBoxes[SUND[a_, b_,c:Except[_?OptionQ], OptionsPattern[]], TraditionalForm]:=
-		SuperscriptBox["d", TBox[a,b,c]]
+		SuperscriptBox["d", TBox[a,b,c]];
 
 SUNDelta /:
 	MakeBoxes[SUNDelta[a_, b_], TraditionalForm ]:=
-		SuperscriptBox["\[Delta]", TBox[a,b]]
+		SuperscriptBox["\[Delta]", TBox[a,b]];
 
 SUNFDelta /:
 	MakeBoxes[SUNFDelta[a_, b_], TraditionalForm ]:=
-		SubscriptBox["\[Delta]", TBox[a,b]]
+		SubscriptBox["\[Delta]", TBox[a,b]];
 
 SUNF /:
 	MakeBoxes[SUNF[a_, b_,c:Except[_?OptionQ], OptionsPattern[]], TraditionalForm]:=
-		SuperscriptBox["f", TBox[a,b,c]]
+		SuperscriptBox["f", TBox[a,b,c]];
 
 SUNIndex /:
 	MakeBoxes[SUNIndex[p_], TraditionalForm]:=

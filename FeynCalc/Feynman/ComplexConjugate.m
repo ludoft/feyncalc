@@ -16,11 +16,10 @@
 (* ------------------------------------------------------------------------ *)
 
 ComplexConjugate::usage =
-"ComplexConjugate[exp] returns the complex conjugate of exp, where the input \
-expression must be a proper matrix element. In particular, all Dirac \
-matrices are assumed to be inside closed Dirac spinor chains. If this is not \
-the case, the result will be inconsistent. Futhermore, denominators may not contain \
-explicit I's!";
+"ComplexConjugate[exp] returns the complex conjugate of exp, where the input
+expression must be a proper matrix element. All Dirac matrices are assumed to
+be inside closed Dirac spinor chains. If this is not the case, the result will
+be inconsistent. Denominators may not contain explicit $i$'s.";
 
 ComplexConjugate::failmsg =
 "Error! ComplexConjugate has encountered a fatal problem and must abort the computation. \
@@ -251,6 +250,14 @@ diracChainCC[ex1_DiracChain ex2_]:=
 diracChainCC[DiracGamma[arg_,dim___]]:=
 	DiracGamma[arg,dim]/;!MemberQ[{5,6,7},arg];
 
+
+diracChainCC[Power[DiracGamma[__],_]]:=
+	(
+	Message[FermionSpinSum::failmsg, "A valid Dirac chain may not contain Dirac matrices raised to a power without a Dot."];
+	Abort[]
+
+	);
+
 diracChainCC[DiracGamma[5]]:=
 	-DiracGamma[5];
 
@@ -311,6 +318,15 @@ pauliChainCC[ex1_PauliChain ex2_]:=
 pauliChainCC[PauliSigma[arg__]]:=
 	PauliSigma[arg];
 
+
+pauliChainCC[Power[PauliSigma[__],_]]:=
+	(
+	Message[FermionSpinSum::failmsg, "A valid Pauli chain may not contain Pauli matrices raised to a power without a Dot."];
+	Abort[]
+
+	);
+
+
 pauliChainCC[PauliXi[Complex[0,arg_]]]:=
 	PauliXi[Complex[0,-arg]];
 
@@ -338,13 +354,13 @@ pauliChainCC[ex_holdDOT]:=
 
 pauliChainCC[PauliChain[a_, i_, j_]]:=
 	PauliChain[(pauliChainCC[a]/.pauliSigmaHold->PauliSigma/. holdDOTReversed->DOT),j,i];
-
+(*
 pauliChainCC[PauliChain[a_Spinor, i_]]:=
 	PauliChain[a,i];
 
 pauliChainCC[PauliChain[i_, a_Spinor]]:=
 	PauliChain[i,a];
-
+*)
 sunChainCC[ex:Except[_Plus | _Times]]:=
 	Block[{	res=ex},
 

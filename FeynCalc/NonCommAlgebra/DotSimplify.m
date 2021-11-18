@@ -16,35 +16,34 @@
 (* ------------------------------------------------------------------------ *)
 
 DotSimplify::usage =
-"DotSimplify[expr] expands and reorders noncommutative terms in expr. \n
-Simplifying relations may be specified by the option \
-DotSimplifyRelations or by Commutator and AntiCommutator definitions. \
-Whether expr is expanded noncommutatively depends
-on the option Expanding.";
+"DotSimplify[exp] expands and reorders noncommutative terms in exp. Simplifying
+relations may be specified by the option DotSimplifyRelations or by Commutator
+and AntiCommutator definitions. Whether exp is expanded noncommutatively
+depends on the option Expanding.";
 
 DotSimplifyRelations::usage =
-"DotSimplifyRelations is an option for DotSimplify. \
-Its setting should be a list of substitution rules of the form \
-DotSimplifyRelations -> {a . b -> c, b^2 -> 0, ...}. In the \
-rules, Condition should not be used and patterns should \
-be avoided on the right-hand sides.\n\n
-NOTICE: The performance of DotSimplify scales \
-very badly with the complexity of DotSimplifyRelations \
-and the number of terms of the expression.";
+"DotSimplifyRelations is an option for DotSimplify. Its setting may be a list
+of substitution rules of the form DotSimplifyRelations -> {a.b -> c, b^2 -> 0,
+...}.
+
+In the rules, Condition should not be used and patterns should be avoided on
+the right-hand sides.
+
+Notice that the performance of DotSimplify scales very badly with the
+complexity of DotSimplifyRelations and the number of terms of the expression.";
 
 DotPower::usage =
-"DotPower is an option for DotSimplify. It determines whether \
-non-commutative powers are represented by successive multiplication \
-or by Power.";
+"DotPower is an option for DotSimplify. It determines whether non-commutative
+powers are represented by successive multiplication or by Power.";
 
 PreservePropagatorStructures::usage =
-"PreservePropagatorStructures is an option for DotSimplify. If set to True, \
-numerators of fermionic propagators like (GS[p]+m) that appear in \
-chains of Dirac matrices will not be expanded.";
+"PreservePropagatorStructures is an option for DotSimplify. If set to True,
+numerators of fermionic propagators like (GS[p]+m) that appear in chains of
+Dirac matrices will not be expanded.";
 
 DotSimplify::failmsg =
 "Error! DotSimplify has encountered a fatal problem and must abort the computation. \
-The problem reads: `1`"
+The problem reads: `1`";
 
 (* ------------------------------------------------------------------------ *)
 
@@ -83,7 +82,7 @@ Options[DotSimplify] = {
 	FCI								-> False,
 	FCJoinDOTs						-> True,
 	FCVerbose						-> False,
-	optMaxIterations				-> 100,
+	MaxIterations				-> 100,
 	PreservePropagatorStructures	-> False,
 	SortBy 	 						-> {Automatic,Automatic}
 };
@@ -106,7 +105,7 @@ DotSimplify[expr_, OptionsPattern[]] :=
 
 		optExpanding			= OptionValue[Expanding];
 		optDotSimplifyRelations	= OptionValue[DotSimplifyRelations];
-		optMaxIterations		= OptionValue[optMaxIterations];
+		optMaxIterations		= OptionValue[MaxIterations];
 		optSortBy				= OptionValue[SortBy];
 
 		FCPrint[1, "DotSimplify: Entering.", FCDoControl->dsVerbose];

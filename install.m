@@ -231,7 +231,7 @@ InstallFeynCalc[OptionsPattern[]]:=
 	Module[	{unzipDir, tmpzip, gitzip, packageName, packageDir, fullPath,
 			strFeynArts, configFileProlog, strOverwriteFC,
 			strDisableWarning, strEnableTraditionalForm, faInstalled, zipDir,
-			useTraditionalForm, configFile},
+			useTraditionalForm, configFile, deleteStatus},
 
 		If[	OptionValue[InstallFeynCalcDevelopmentVersion],
 			gitzip = OptionValue[FeynCalcDevelopmentVersionLink],
@@ -310,15 +310,24 @@ InstallFeynCalc[OptionsPattern[]]:=
 
 			If[ OptionValue[AutoOverwriteFeynCalcDirectory],
 
-				Quiet@DeleteDirectory[packageDir, DeleteContents -> True],
+				Quiet[deleteStatus=DeleteDirectory[packageDir, DeleteContents -> True];],
 
 				Null,
 				If[ choiceDialog2[fancyText[strOverwriteFC],{"Yes, overwrite the " <> packageName <>" directory"->True,
 					"No, I need to do a backup first. Abort installation."->False}, WindowFloating->True, WindowTitle->"Existing FeynCalc installation detected"],
-					Quiet@DeleteDirectory[packageDir, DeleteContents -> True],
+					Quiet[deleteStatus=DeleteDirectory[packageDir, DeleteContents -> True];],
 					Abort[]
 				]
 			]
+		];
+
+		If[	deleteStatus===$Failed,
+			WriteString["stdout", "=========================================================================\n"];
+			WriteString["stdout", "For some reason the automatic installer failed to delete the directory\n"];
+			WriteString["stdout", packageDir<>"\n"];
+			WriteString["stdout", "Please delete this directory by hand and restart the installer.\n"];
+			WriteString["stdout", "=========================================================================\n"];
+			Abort[]
 		];
 
 		(* Download FeynCalc zip file	*)
@@ -352,12 +361,13 @@ InstallFeynCalc[OptionsPattern[]]:=
 		];
 
 		WriteString["stdout", "Checking the directory structure..."];
-		zipDir = FileNames["FeynCalc.m", unzipDir, Infinity];
+		zipDir = Select[FileNames["FeynCalc.m", unzipDir, Infinity],StringFreeQ[#,"DocumentationFiles"]&];
 		If[ Length[zipDir]===1,
 			fullPath = DirectoryName[zipDir[[1]]];
 			zipDir = Last[FileNameSplit[DirectoryName[zipDir[[1]]]]];
 			WriteString["stdout", "done! \n"],
 			WriteString["stdout", "\nFailed to recognize the directory structure of the downloaded zip file. \nInstallation aborted!"];
+			WriteString["stdout", "\nzipDir is ", zipDir];
 			Abort[]
 		];
 
@@ -372,19 +382,22 @@ InstallFeynCalc[OptionsPattern[]]:=
 			Quiet@DeleteDirectory[unzipDir, DeleteContents -> True];
 		];
 
-		(* Activate the documentation	*)
-		WriteString["stdout", "Setting up the help system ... "];
-		RenameDirectory[FileNameJoin[{packageDir,"DocOutput"}],FileNameJoin[{packageDir,"Documentation"}]];
-		Quiet@DeleteDirectory[FileNameJoin[{packageDir,"DocSource"}], DeleteContents -> True];
 
-		(* Disable InsufficientVersionWarning?*)
-		If[ OptionValue[AutoDisableInsufficientVersionWarning] && $Notebooks,
+		If[	!OptionValue[InstallFeynCalcDevelopmentVersion],
+			(* Activate the documentation	*)
+			WriteString["stdout", "Setting up the help system ... "];
+			RenameDirectory[FileNameJoin[{packageDir,"DocOutput"}],FileNameJoin[{packageDir,"Documentation"}]];
+			Quiet@DeleteDirectory[FileNameJoin[{packageDir,"DocSource"}], DeleteContents -> True];
 
-			SetOptions[$FrontEnd, MessageOptions -> {"InsufficientVersionWarning" -> False}],
+			(* Disable InsufficientVersionWarning?*)
+			If[ OptionValue[AutoDisableInsufficientVersionWarning] && $Notebooks,
 
-			Null,
-			If[ choiceDialog2[fancyText[strDisableWarning], WindowFloating->True, WindowTitle->"Documentation system"] && $Notebooks,
-				SetOptions[$FrontEnd, MessageOptions -> {"InsufficientVersionWarning" -> False}]
+				SetOptions[$FrontEnd, MessageOptions -> {"InsufficientVersionWarning" -> False}],
+
+				Null,
+				If[ choiceDialog2[fancyText[strDisableWarning], WindowFloating->True, WindowTitle->"Documentation system"] && $Notebooks,
+					SetOptions[$FrontEnd, MessageOptions -> {"InsufficientVersionWarning" -> False}]
+				]
 			]
 		];
 
@@ -401,10 +414,12 @@ InstallFeynCalc[OptionsPattern[]]:=
 
 		WriteString["stdout", "done! \n"];
 
-		(* To have the documentation available immediately after installing FeynCalc (following the advice of Szabolcs Horv'at) *)
-		If[	$VersionNumber >= 12.1,
-			PacletDataRebuild[],
-			RebuildPacletData[]
+		If[	!OptionValue[InstallFeynCalcDevelopmentVersion],
+			(* To have the documentation available immediately after installing FeynCalc (following the advice of Szabolcs Horv'at) *)
+			If[	$VersionNumber >= 12.1,
+				PacletDataRebuild[],
+				RebuildPacletData[]
+			];
 		];
 
 		(* Generate FCConfig.m	*)

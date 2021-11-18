@@ -246,5 +246,24 @@ AuxiliaryMomenta\[Rule]{v}]",
 {"fcstFCLoopPropagatorsToLineMomenta-ID65",
 "FCLoopPropagatorsToLineMomenta[{CFAD[{{0,2v.(q+r)},m^2}]},\
 FCE->True,AuxiliaryMomenta\[Rule]{v}]",
-"{{q + r}, {m^2}, {CFAD[{{0, 2*(q + r) . v}, {m^2, -1}, 1}]}}"}
+"{{q + r}, {m^2}, {CFAD[{{0, 2*(q + r) . v}, {m^2, -1}, 1}]}}"},
+{"fcstFCLoopPropagatorsToLineMomenta-ID66",
+"FCLoopPropagatorsToLineMomenta[{SFAD[{I(q+l),-m^2}],
+SFAD[{I p,-m^2}]},FCE->True]",
+"{{l + q, p}, {m^2, m^2}, {SFAD[{{I*(l + q), 0}, {-m^2, 1}, 1}],
+SFAD[{{I*p, 0}, {-m^2, 1}, 1}]}}"},
+{"fcstFCLoopPropagatorsToLineMomenta-ID67",
+"FCLoopPropagatorsToLineMomenta[{FeynAmpDenominator[
+StandardPropagatorDenominator[
+	I*Momentum[p1, D], -2*Pair[Momentum[p1, D], Momentum[q, D]],
+	0, {1, 1}]]},FCE->True]",
+"{{p1 + q}, {0}, {SFAD[{{I*p1, -2*p1 . q}, {0, 1}, 1}]}}"},
+{"fcstFCLoopPropagatorsToLineMomenta-ID68",
+"FCLoopPropagatorsToLineMomenta[{GFAD[{{SPD[2 p1 - 2 p3, q], -1}, 1}]},
+FCE -> True]",
+"{{2*p1 - 2*p3 + q}, {0}, {SFAD[{{0, (2*p1 - 2*p3) . q}, {0, -1}, 1}]}}"},
+{"fcstFCLoopPropagatorsToLineMomenta-ID69",
+"FCLoopPropagatorsToLineMomenta[{GFAD[{{SPD[2 p1 - 2 p3, q] - m^2, -1},
+1}]}, FCE -> True]",
+"{{2*p1 - 2*p3 + q/2}, {-m^2}, {SFAD[{{0, (2*p1 - 2*p3) . q}, {m^2, -1}, 1}]}}"}
 });

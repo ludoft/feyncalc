@@ -16,17 +16,18 @@
 (* ------------------------------------------------------------------------ *)
 
 FCLoopPropagatorsToLineMomenta::usage =
-"FCLoopPropagatorsToLineMomenta[{prop1, prop2,...}] is an auxiliary function that extracts
-line momenta flowing through the given list of propagators.";
+"FCLoopPropagatorsToLineMomenta[{prop1, prop2, ...}] is an auxiliary function
+that extracts line momenta flowing through the given list of propagators.";
 
 AuxiliaryMomenta::usage =
-"AuxiliaryMomenta is an option of FCLoopPropagatorsToLineMomenta it specifices auxiliary \
-momenta that do not correspond to external legs, i.e. don't really flow through the lines,
-e.g. n and nbar in SCET or v in HQET."
+"AuxiliaryMomenta is an option of FCLoopPropagatorsToLineMomenta,
+FCLoopIntegralToGraph and other functions. It specifies auxiliary momenta that
+do not correspond to external legs, i.e. don't really flow through the lines,
+e.g. $n$ and $\\bar{n}$ in SCET or $v$ in HQET.";
 
 FCLoopPropagatorsToLineMomenta::failmsg =
 "FCLoopPropagatorsToLineMomenta has encountered a fatal problem and must abort the computation. \
-The problem reads: `1`"
+The problem reads: `1`";
 
 (* ------------------------------------------------------------------------ *)
 
@@ -42,6 +43,7 @@ Options[FCLoopPropagatorsToLineMomenta] = {
 	AuxiliaryMomenta	-> {},
 	FCE					-> True,
 	FCI					-> False,
+	FromGFAD			-> True,
 	FCVerbose			-> False,
 	Expanding			-> True,
 	MomentumCombine		-> True
@@ -69,12 +71,20 @@ FCLoopPropagatorsToLineMomenta[expr_, OptionsPattern[]] :=
 			ex = FCI[expr]
 		];
 
+		FCPrint[1, "FCLoopPropagatorsToLineMomenta: Entering.", FCDoControl->ptlmVerbose];
+		FCPrint[3, "FCLoopPropagatorsToLineMomenta: Entering with: ", ex,  FCDoControl->ptlmVerbose];
+
 		If[	OptionValue[MomentumCombine],
 			ex = MomentumCombine[ex,FCI->True]
 		];
 
-		FCPrint[1, "FCLoopPropagatorsToLineMomenta: Entering.", FCDoControl->ptlmVerbose];
-		FCPrint[3, "FCLoopPropagatorsToLineMomenta: Entering with", ex,  FCDoControl->ptlmVerbose];
+		FCPrint[3, "FCLoopPropagatorsToLineMomenta: After MomentumCombine: ", ex,  FCDoControl->ptlmVerbose];
+
+		If[	OptionValue[FromGFAD],
+			ex = FromGFAD[ex,FCI->True]
+		];
+
+		FCPrint[3, "FCLoopPropagatorsToLineMomenta: After FromGFAD: ", ex,  FCDoControl->ptlmVerbose];
 
 		If[	!MatchQ[ex, {FeynAmpDenominator__}],
 			Message[FCLoopPropagatorsToLineMomenta::failmsg, "The input expression is not a valid list of propagators"];
@@ -84,6 +94,11 @@ FCLoopPropagatorsToLineMomenta[expr_, OptionsPattern[]] :=
 		ex = ex /. FeynAmpDenominator[(a_PropagatorDenominator)..] :> FeynAmpDenominator[a];
 
 		res = ex /. FeynAmpDenominator-> lineMomentumFromPropagator;
+
+		(* Handle stuff like SFAD[{{I p1 + I p3, 0}, {-mb^2, 1}, 1}] *)
+		If[!FreeQ[res,Complex],
+			res = Replace[Factor[res], {Complex[0, 1] a_, b_} :> {a, b}, 1]
+		];
 
 		FCPrint[3, "FCLoopPropagatorsToLineMomenta: After lineMomentumFromPropagator", res,  FCDoControl->ptlmVerbose];
 
@@ -109,15 +124,15 @@ FCLoopPropagatorsToLineMomenta[expr_, OptionsPattern[]] :=
 	];
 
 (*FAD quadratic, 1/[p^2-m^2]*)
-lineMomentumFromPropagator[PropagatorDenominator[Momentum[mom_, ___], mass_]]:=
+lineMomentumFromPropagator[PropagatorDenominator[_. Momentum[mom_, ___], mass_]]:=
 	{mom, -mass^2}/; FreeQ2[mom,auxMoms];
 
 (*SFAD squared, 1/[p^2-m^2] or 1/[p^2+m^2] *)
-lineMomentumFromPropagator[StandardPropagatorDenominator[Momentum[mom_, ___], 0, massSq_, {_, _}]]:=
+lineMomentumFromPropagator[StandardPropagatorDenominator[_. Momentum[mom_, ___], 0, massSq_, {_, _}]]:=
 	{mom, massSq}/; FreeQ2[mom,auxMoms];
 
 (*CFAD squared, 1/[p^2-m^2] or 1/[p^2+m^2] *)
-lineMomentumFromPropagator[CartesianPropagatorDenominator[CartesianMomentum[mom_, ___], 0, massSq_, {_, _}]]:=
+lineMomentumFromPropagator[CartesianPropagatorDenominator[_. CartesianMomentum[mom_, ___], 0, massSq_, {_, _}]]:=
 	{mom, massSq}/; FreeQ2[mom,auxMoms];
 
 
@@ -144,6 +159,12 @@ lineMomentumFromPropagator[StandardPropagatorDenominator[0,	pref_. Pair[Momentum
 lineMomentumFromPropagator[StandardPropagatorDenominator[Momentum[mom_, ___],	pref_. Pair[Momentum[mom_, ___],
 	Momentum[b_, ___]], massSq_, {_, _}]]:=
 	{mom + pref/2 b, massSq}/; FreeQ2[mom,auxMoms];
+
+
+(*SFAD eikonal 1/[-p^2 +/- x p.q +/- m^2]  *)
+lineMomentumFromPropagator[StandardPropagatorDenominator[Complex[0,1] Momentum[mom_, ___],	pref_. Pair[Momentum[mom_, ___],
+	Momentum[b_, ___]], massSq_, {_, _}]]:=
+	{mom - pref/2 b, massSq}/; FreeQ2[mom,auxMoms];
 
 (*SFAD eikonal 1/[+/- v.q]  *)
 lineMomentumFromPropagator[StandardPropagatorDenominator[0,	pref_. Pair[Momentum[a_, ___],
@@ -177,6 +198,11 @@ lineMomentumFromPropagator[CartesianPropagatorDenominator[CartesianMomentum[mom_
 	CartesianMomentum[b_, ___]], massSq_, {_, _}]]:=
 	{mom + pref/2 b, massSq}/; FreeQ2[mom,auxMoms];
 
+(*CFAD eikonal 1/[p^2 +/- x p.q +/- m^2]  *)
+lineMomentumFromPropagator[CartesianPropagatorDenominator[Complex[0,1] CartesianMomentum[mom_, ___],	pref_. CartesianPair[CartesianMomentum[mom_, ___],
+	CartesianMomentum[b_, ___]], massSq_, {_, _}]]:=
+	{I mom + pref/2 b, massSq}/; FreeQ2[mom,auxMoms];
+
 (*CFAD eikonal 1/[+/- v.q]  *)
 lineMomentumFromPropagator[CartesianPropagatorDenominator[0,	pref_. CartesianPair[CartesianMomentum[a_, ___],
 	CartesianMomentum[b_, ___]], massSq_, {_, _}]]:=
@@ -184,6 +210,7 @@ lineMomentumFromPropagator[CartesianPropagatorDenominator[0,	pref_. CartesianPai
 		{-a, massSq},
 		{a, massSq}
 	]/; MemberQ[auxMoms,b];
+
 
 FCPrint[1,"FCLoopPropagatorsToLineMomenta.m loaded."];
 End[]

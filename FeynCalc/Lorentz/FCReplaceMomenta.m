@@ -16,16 +16,16 @@
 (* ------------------------------------------------------------------------ *)
 
 FCReplaceMomenta::usage =
-"FCReplaceMomenta[exp,rule] replaces the given momentum according to the \
-specified replacement rules. Various options can be used to customize the replacement \
-procedure.";
+"FCReplaceMomenta[exp, rule]  replaces the given momentum according to the
+specified replacement rules. Various options can be used to customize the
+replacement procedure.";
 
 FCReplaceMomenta::repfail=
 "Error! Failed to replace all occurences of `1` with `2`. Evaluation aborted.";
 
 FCReplaceMomenta::failmsg =
 "Error! FCReplaceMomenta has encountered a fatal problem and must abort \
-the computation. The problem reads: `1`"
+the computation. The problem reads: `1`";
 
 (* ------------------------------------------------------------------------ *)
 
@@ -57,7 +57,7 @@ Options[FCReplaceMomenta] = {
 	Variables 			-> {}
 };
 
-FCReplaceMomenta[expr_, replacementRules_List/;replacementRules=!={},  OptionsPattern[]] :=
+FCReplaceMomenta[expr_, replacementRules_List,  OptionsPattern[]] :=
 	Block[{	ex,res, relevantMomenta,relevantObjects,sel, relevantMomentumHeads,
 			objectHeads, momentumHeads,dims, rule, pat, finalRepRule, intermediateRepRule,
 			relevantObjectsEval, variableRule, vars, null1, null2, selectFree, tmp, maskedObjects,
@@ -95,6 +95,11 @@ FCReplaceMomenta[expr_, replacementRules_List/;replacementRules=!={},  OptionsPa
 			Message[FCReplaceMomenta::failmsg, "The momentum replacement rules are incorrect."];
 			Abort[]
 
+		];
+
+		If[	replacementRules==={},
+			FCPrint[1,"FCReplaceMomenta: Nothing to do.", FCDoControl->fcrmVerbose];
+			Return[ex]
 		];
 
 		relevantMomenta = First/@replacementRules;

@@ -6,29 +6,30 @@
 (* ------------------------------------------------------------------------ *)
 
 Explicit::usage =
-"Explicit is an option for FieldStrength, GluonVertex, \
-SUNF, CovariantFieldDerivative, Twist2GluonOperator and others functions. \
-If set to True the full form of the operator is inserted. \
-Explicit[exp] inserts explicit expressions of FieldStrength, \
-GluonVertex, etc. in exp. \n
-The dimension of the objects is changed according to the setting of the \
-option Dimension. SUNF's are replaced by SUNTrace objects.";
+"Explicit is an option for FieldStrength, GluonVertex, SUNF, and
+Twist2GluonOperator. If set to True the full form of the operator is inserted.
+
+Explicit[exp] inserts explicit expressions of GluonVertex, Twist2GluonOperator
+etc. in exp. SUNFs are replaced by SUNTrace objects.";
 
 (* ------------------------------------------------------------------------ *)
 
 
-Begin["`Package`"]
+Begin["`Package`"];
 
 SymbolsWithExplicitOption;
 
 SymbolsWithExplicitOption = {
 	FeynCalc`FCChargeConjugateTransposed[xx_, op:OptionsPattern[]]  :>
-		FeynCalc`FCChargeConjugateTransposed[xx, Explicit->True,	Sequence@@FilterRules[{op}, Except[Explicit]]]
-}
+		FeynCalc`FCChargeConjugateTransposed[xx, Explicit->True,	Sequence@@FilterRules[{op}, Except[Explicit]]],
+
+	FeynCalc`FCClausen[xx_, yy_, op:OptionsPattern[]]  :>
+		FeynCalc`FCClausen[xx, yy, Explicit->True,	Sequence@@FilterRules[{op}, Except[Explicit]]]
+};
 
 End[]
 
-Begin["`Explicit`Private`"]
+Begin["`Explicit`Private`"];
 
 Options[Explicit] = {
 	CouplingConstant	-> SMP["g_s"],

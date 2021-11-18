@@ -16,18 +16,19 @@
 (* ------------------------------------------------------------------------ *)
 
 FCMatchSolve::usage=
-"FCMatchSolve[expr, {notvar1, notvar2, ...}] assumes that expr is a \
-sum that must vanish termwise and converts it to a system of linear \
-equations. The function automatically determines which variables to solve, \
-excluding notvar1, notvar2, ... from the list. FCMatchSolve \
-can also handle overdetermined systems of equations.
+"FCMatchSolve[expr, {notvar1, notvar2, ...}] assumes that expr is a sum that
+must vanish term-wise and converts it to a system of linear equations. The
+function automatically determines which variables to solve for, excluding
+notvar1, notvar2, ... from the list.
 
-This function is useful e.g. for determining renormalization constants or \
-matching coefficients, where looking at each term separately and determining \
-the values of the constants/coefficients by hand is too tedious. The input \
-(say a sum or a difference of amplitudes) should be prepared using Collect2 \
-by collecting w.r.t to distinct objects, e.g. matrix elements or coupling \
-constants so that each term must vanish separately.";
+FCMatchSolve can also handle overdetermined systems of equations. This
+function is useful e.g. for determining renormalization constants or matching
+coefficients, where looking at each term separately and determining the values
+of the constants/coefficients by hand is too tedious.
+
+The input (say a sum or a difference of amplitudes) should be prepared using
+Collect2 by collecting w.r.t distinct objects, e.g. matrix elements or
+coupling constants so that each term must vanish separately.";
 
 FCMatchSolve::failmsg =
 "FCMatchSolve has encountered a fatal problem and must abort the computation. \
@@ -37,11 +38,12 @@ FCMatchSolve::multsol =
 "The solutions is not unique!";
 
 
-Begin["`Package`"]
+Begin["`Package`"];
+
 End[]
 (* ------------------------------------------------------------------------ *)
 
-Begin["`FCMatchSolve`Private`"]
+Begin["`FCMatchSolve`Private`"];
 
 fcmsVerbose::usage="";
 
@@ -51,7 +53,8 @@ Options[FCMatchSolve] = {
 	FCVerbose	-> False,
 	Method		-> Automatic,
 	MaxIterations -> Infinity,
-	Factoring	-> Factor2
+	Factoring	-> Factor2,
+	Reduce		-> True
 };
 
 
@@ -122,7 +125,7 @@ FCMatchSolve[expr_, notvars_List/; (!OptionQ[notvars] || notvars==={}), OptionsP
 		allEqVars = (SelectFree[Variables[#], notvars] & /@ (First /@ eqSys));
 
 		nVarsToRemove = Length[eqSys] - Length[vars];
-		If[	nVarsToRemove > 0,
+		If[	nVarsToRemove > 0 && OptionValue[Reduce],
 
 			FCPrint[1, "FCMatchSolve: Seemingly overdetermined system of equations. Reducing the list of variables.", FCDoControl->fcmsVerbose];
 			varsToRemove = {};
@@ -132,7 +135,7 @@ FCMatchSolve[expr_, notvars_List/; (!OptionQ[notvars] || notvars==={}), OptionsP
 					nVarsAlreadyRemoved++;
 					varsToRemove = Join[varsToRemove, {#}]
 				]&, vars];
-			FCPrint[1, "FCMatchSolve: Following variables will be treated as free parameters: ", varsToRemove, FCDoControl->fcmsVerbose];
+			FCPrint[0, "FCMatchSolve: Following variables will be treated as free parameters: ", varsToRemove, FCDoControl->fcmsVerbose];
 			vars = SelectFree[vars, varsToRemove];
 
 		];
@@ -145,7 +148,6 @@ FCMatchSolve[expr_, notvars_List/; (!OptionQ[notvars] || notvars==={}), OptionsP
 			FCPrint[0, Style["FCMatchSolve: No solutions found.", {Darker[Red,0.55], Bold}], FCDoControl->fcmsVerbose];
 			Return[{}],
 
-			FCPrint[0, Style["FCMatchSolve: A solution exists.", {Darker[Green,0.55], Bold}] , FCDoControl->fcmsVerbose];
 			If[	Length[eqSol]>1,
 				Message[FCMatchSolve::multsol],
 				eqSol = First[eqSol]
@@ -153,6 +155,11 @@ FCMatchSolve[expr_, notvars_List/; (!OptionQ[notvars] || notvars==={}), OptionsP
 		];
 
 		eqSol = Join[preSol,eqSol];
+
+		If[ !MatchQ[Last/@eqSol,{0..}],
+				FCPrint[0, Style["FCMatchSolve: A solution exists.", {Darker[Green,0.55], Bold}] , FCDoControl->fcmsVerbose],
+				FCPrint[0, Style["FCMatchSolve: Only a trivial solution exists.", {Darker[Yellow,0.55], Bold}] , FCDoControl->fcmsVerbose];
+		];
 
 		If[ optFactoring=!=False,
 			eqSol = optFactoring[eqSol]

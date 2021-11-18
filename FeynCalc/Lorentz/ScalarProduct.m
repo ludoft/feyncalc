@@ -16,35 +16,54 @@
 (* ------------------------------------------------------------------------ *)
 
 ScalarProduct::usage =
-"ScalarProduct[p, q] is the input for the scalar product of two \
-Lorentz vectors p and q. ScalarProduct[p] is equivalent to \
-ScalarProduct[p, p]. Expansion of sums of momenta in ScalarProduct is
-done with ExpandScalarProduct. Scalar products may be set, e.g. via \
-ScalarProduct[a, b] = m^2; but a and b may not contain sums. \
-Note that ScalarProduct[a, b] = m^2 actually sets Lorentzian scalar products \
-in different dimensions specified by the value of the SetDimensions option. \
-It is highly recommended to set ScalarProduct's BEFORE any \
-calculation. This improves the performance of FeynCalc.";
+"ScalarProduct[p, q]  is the input for the scalar product of two Lorentz
+vectors p and q.
+
+ScalarProduct[p] is equivalent to ScalarProduct[p, p].
+
+Expansion of sums of momenta in ScalarProduct is done with
+ExpandScalarProduct.
+
+Scalar products may be set, e.g. via ScalarProduct[a, b] = m^2; but a and b
+may not contain sums.
+
+ScalarProduct[a]  corresponds to ScalarProduct[a,a] 
+
+Note that ScalarProduct[a, b] = m^2 actually sets Lorentzian scalar products
+in different dimensions specified by the value of the SetDimensions option.
+
+It is highly recommended to set ScalarProducts before any calculation. This
+improves the performance of FeynCalc.";
 
 CartesianScalarProduct::usage =
-"CartesianScalarProduct[p, q] is the input for the scalar product of two \
-Cartesian vectors p and q. CartesianScalarProduct[p] is equivalent to \
-CartesianScalarProduct[p, p]. Expansion of sums of momenta in CartesianScalarProduct is
-done with ExpandScalarProduct. Scalar products may be set, e.g. via \
-ScalarProduct[a, b] = m^2; but a and b may not contain sums. \
-Note that ScalarProduct[a, b] = m^2 actually sets Cartesian scalar products \
-in different dimensions specified by the value of the SetDimensions option. \
-It is highly recommended to set ScalarProduct's BEFORE any \
-calculation. This improves the performance of FeynCalc.";
+"CartesianScalarProduct[p, q]  is the input for the scalar product of two
+Cartesian vectors p and q.
+
+CartesianScalarProduct[p] is equivalent to CartesianScalarProduct[p, p].
+
+Expansion of sums of momenta in CartesianScalarProduct is done with
+ExpandScalarProduct.
+
+Scalar products may be set, e.g. via ScalarProduct[a, b] = m^2; but a and b
+may not contain sums.
+
+CartesianScalarProduct[a]  corresponds to CartesianScalarProduct[a,a] 
+
+Note that ScalarProduct[a, b] = m^2 actually sets Cartesian scalar products in
+different dimensions specified by the value of the SetDimensions option.
+
+It is highly recommended to set ScalarProducts before any calculation. This
+improves the performance of FeynCalc.";
 
 SetTemporalComponent::usage =
-"SetTemporalComponent[p, val] sets the value of the temporal
-component of a 4-vector p, TemporalPair[ExplicitLorentzIndex[0],TemporalMomentum[p]] to val.";
+"SetTemporalComponent[p, val] sets the value of the temporal component of a
+$4$-vector $p$, TemporalPair[ExplicitLorentzIndex[0],TemporalMomentum[p]] to
+val.";
 
 ScalarProduct::emptydim =
 "If you want to set scalar products via ScalarProduct[a, b] = m^2, you must \
 specify at least one dimension via the option SetDimensions->{dims...}! Evaluation \
-aborted."
+aborted.";
 
 ScalarProduct::fail =
 "Something went wrong while setting scalar products! Evaluation aborted."
@@ -52,10 +71,10 @@ ScalarProduct::fail =
 CartesianScalarProduct::emptydim =
 "If you want to set scalar products via CartesianScalarProduct[a, b] = m^2, you must \
 specify at least one dimension via the option SetDimensions->{dims...}! Evaluation \
-aborted."
+aborted.";
 
 CartesianScalarProduct::fail =
-"Something went wrong while setting scalar products! Evaluation aborted."
+"Something went wrong while setting scalar products! Evaluation aborted.";
 
 (* ------------------------------------------------------------------------ *)
 
@@ -111,6 +130,9 @@ CartesianScalarProduct[a_,b_, OptionsPattern[]] :=
 	CartesianPair[CartesianMomentum[a, OptionValue[Dimension]], CartesianMomentum[b, OptionValue[Dimension]]]/;
 	FreeQ[{a,b}, CartesianMomentum] && OptionValue[FCI];
 
+ScalarProduct/:
+	Set[ScalarProduct[araw_, c:OptionsPattern[]] , z_]:=
+		Set[ScalarProduct[araw, araw, c] , z];
 
 ScalarProduct/:
 	Set[ScalarProduct[araw_,braw_,c:OptionsPattern[]] , z_]:=
@@ -246,6 +268,10 @@ ScalarProduct/:
 		setval
 	]/; araw=!=0 && braw=!=0 && FCPatternFreeQ[{araw,braw}];
 
+
+CartesianScalarProduct/:
+	Set[CartesianScalarProduct[araw_, c:OptionsPattern[]] , z_]:=
+		Set[CartesianScalarProduct[araw, araw, c] , z];
 
 CartesianScalarProduct/:
 	Set[CartesianScalarProduct[araw_,braw_,c:OptionsPattern[]] , z_]:=

@@ -17,11 +17,10 @@
 
 
 DiracTrace::usage =
-"DiracTrace[exp] is the head of Dirac traces. \
-By default the trace is not evaluated. The evaluation occurs only when \
-the option DiracTraceEvaluate is set to True. It is recommended to use \
-DiracSimplify, which will automatically evaluate all Dirac traces in the \
-input expression.";
+"DiracTrace[exp] is the head of Dirac traces. By default the trace is not
+evaluated. The evaluation occurs only when the option DiracTraceEvaluate is
+set to True. It is recommended to use DiracSimplify, which will automatically
+evaluate all Dirac traces in the input expression.";
 
 DiracTrace::failmsg =
 "Error! DiracTrace has encountered a fatal problem and must abort the computation. \
@@ -96,7 +95,7 @@ DiracTrace[expr_, op:OptionsPattern[]] :=
 		unitMatrixTrace = OptionValue[TraceOfOne];
 		optSort  = OptionValue[Sort];
 
-		FCPrint[1, "DiracTrace. Entering.", FCDoControl->diTrVerbose];
+		FCPrint[1, "DiracTrace: Entering.", FCDoControl->diTrVerbose];
 		FCPrint[3, "DiracTrace: Entering with ", expr, FCDoControl->diTrVerbose];
 
 

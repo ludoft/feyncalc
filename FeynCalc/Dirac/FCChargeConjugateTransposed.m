@@ -19,13 +19,15 @@ FCCCT::usage =
 "FCCCT is an alias for FCChargeConjugateTransposed.";
 
 FCChargeConjugateTransposed::usage =
-"FCChargeConjugateTransposed[exp] represents the application of the charge \
-conjugation operator to the transposed of exp, i.e. C exp^T C^(-1). Here exp \
-is understood to be a single Dirac matrix or a chain thereof. \n
-The option Explicit determines whether to substitute the explicit result or \
-to leave the expression in the unevaluated form. This form will be \
-also maintained if the function does not know how to obtain C exp^T C^(-1) \
-from the given exp.";
+"FCChargeConjugateTransposed[exp] represents the application of the charge
+conjugation operator to the transposed of exp, i.e. $C^{-1} \\text{exp}^T C$.
+Here exp is understood to be a single Dirac matrix or a chain thereof. The
+option setting Explicit determines whether the explicit result is returned or
+whether it is left in the unevaluated form.The unevaluated form will be also
+maintained if the function does not know how to obtain $C^{-1} \\text{exp}^T C$
+from the given exp.
+
+The shortcut for FCChargeConjugateTransposed is FCCCT.";
 
 FCChargeConjugateTransposed::failmsg =
 "Error! SpinorChainTranspose has encountered a fatal problem and must abort the computation. \
@@ -178,7 +180,7 @@ FCChargeConjugateTransposed[expr_/; !MemberQ[{List,Equal},expr], opts:OptionsPat
 		];
 
 		FCPrint[1, "FCChargeConjugateTransposed: Leaving.", FCDoControl->fcctVerbose];
-		FCPrint[3, "FCChargeConjugateTransposed: Leaving with", res, FCDoControl->fcctVerbose];
+		FCPrint[3, "FCChargeConjugateTransposed: Leaving with ", res, FCDoControl->fcctVerbose];
 
 		res
 
@@ -205,6 +207,10 @@ cctEvaluateSingle[(d:DiracGamma[5|6|7])]:=
 (* C (g^mu p_mu +/- m)^T C^(-1) = (-g^mu p_mu +/- m) *)
 cctEvaluateSingle[c1_. d_DiracGamma + c2_:0]:=
 		(- c1 d + c2)/; NonCommFreeQ[{c1,c2}] && FreeQ[{c1,c2}, dotHold] && !MatchQ[d,DiracGamma[5|6|7]];
+
+(*at this point we may fish out commutative prefactors*)
+cctEvaluateSingle[c_ d_dotHold]:=
+	c cctEvaluateSingle[d]/; NonCommFreeQ[c];
 
 cctEvaluateMultiple[dotHold[a_]]:=
 	cctEvaluateSingle[a];

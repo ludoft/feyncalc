@@ -16,25 +16,23 @@
 (* ------------------------------------------------------------------------ *)
 
 FourDivergence::usage =
-"FourDivergence[exp, FV[p, mu]] calculates the partial derivative of exp w.r.t. p^mu. \
-FourDivergence[exp, FV[p, mu], FV[p,nu], ...] gives the multiple derivative.";
-
-PartialFourVector::usage=
-"PartialFourVector is equivalent to FourDivergence";
+"FourDivergence[exp, FV[p, mu]] calculates the partial derivative of exp w.r.t
+$p^{\\mu }$. FourDivergence[exp, FV[p, mu], FV[p,nu], ...] gives the multiple
+derivative.";
 
 FourDivergence::notvec=
-"`1` is not a Lorentz vector. Evaluation aborted!"
+"`1` is not a Lorentz vector. Evaluation aborted!";
 
 FourDivergence::extfail=
 "Failed to extract the name of the Lorentz vector from `1`. Evaluation aborted!"
 
 FourDivergence::toocompl=
 "The structure `1` w.r.t which you are trying to differentiate is too complicated \
-to ensure the correct result. Evaluation aborted!"
+to ensure the correct result. Evaluation aborted!";
 
 FourDivergence::failmsg =
 "Error! FourDivergence has encountered a fatal problem and must abort the computation. \
-The problem reads: `1`"
+The problem reads: `1`";
 
 FourDivergence::warn =
 "Warning! The input expression also depends on `1` in dimensions other than `2`. \
@@ -52,14 +50,13 @@ evaluating  Off[ThreeDivergence::warnCartesian].";
 (* ------------------------------------------------------------------------ *)
 
 Begin["`Package`"]
+fourVectorDiffEval;
 End[]
 
 Begin["`FourDivergence`Private`"]
 
 fdVerbose::usage="";
 optEpsExpand::usage="";
-
-PartialFourVector = FourDivergence;
 
 Options[FourDivergence] = {
 	Abort 				-> True,
@@ -76,8 +73,7 @@ Options[FourDivergence] = {
 };
 
 FourDivergence[expr_, fv:Except[_?OptionQ].., OptionsPattern[]] :=
-	Block[{	ex, ve, tliflag = False, time, args, hold, optEpsEvaluate,
-			optEpsExpand},
+	Block[{	ex, ve, time, args, hold, optEpsEvaluate, optEpsExpand},
 
 		optEpsEvaluate	= OptionValue[EpsEvaluate];
 		optEpsExpand	= OptionValue[EpsExpand];
@@ -101,12 +97,6 @@ FourDivergence[expr_, fv:Except[_?OptionQ].., OptionsPattern[]] :=
 
 		args = Cases[{ve}, z_Momentum :> First[z], Infinity] // Sort // DeleteDuplicates;
 
-		(* QCD-related stuff *)
-		If[ !FreeQ[ex, TLI],
-			ex = TLI2FC[ex];
-			tliflag = True
-		];
-
 		FCPrint[1, "FourDivergence: Applying fourDerivative ", FCDoControl->fdVerbose];
 		time=AbsoluteTime[];
 		ex = fourDerivative[ex,Sequence@@ve];
@@ -120,11 +110,6 @@ FourDivergence[expr_, fv:Except[_?OptionQ].., OptionsPattern[]] :=
 			ex = FeynAmpDenominatorCombine[ex, FCI->True];
 			FCPrint[1, "FourDivergence: FeynAmpDenominatorCombine done, timing: ", N[AbsoluteTime[] - time, 4], FCDoControl->fdVerbose];
 			FCPrint[3, "FourDivergence: After FeynAmpDenominatorCombine: ", ex, FCDoControl->fdVerbose]
-		];
-
-		(* QCD-related stuff *)
-		If[ tliflag && FreeQ[ex, LorentzIndex],
-			ex = FC2TLI[ex, (Momentum/.Options[TLI2FC])[[1]], (Momentum/.Options[TLI2FC])[[2]]]
 		];
 
 		If[	OptionValue[Contract],
@@ -250,16 +235,8 @@ fourDerivative[x_, ve_]:=
 
 		dList = Cases[nx+null1+null2,deriv[___][___][___],Infinity]//Sort//DeleteDuplicates;
 
-		dListEval = dList /. (deriv[__][fadHead][__]) :> 1 /. {
-			deriv[1, 0][Pair][p,  a_] :> Pair[a, mu] ,
-			deriv[0, 1][Pair][a_, p] :> Pair[a, mu] ,
-			deriv[1,0][DiracGamma][p,dim_] :> DiracGamma[mu,dim] ,
-			deriv[1][DiracGamma][p] :> DiracGamma[mu] ,
-			deriv[1,0,0,0][Eps][p,c__] :> Eps[mu,c] ,
-			deriv[0,1,0,0][Eps][a_,p,c__] :> Eps[a,mu,c] ,
-			deriv[0,0,1,0][Eps][a__,p,c_] :> Eps[a,mu,c] ,
-			deriv[0,0,0,1][Eps][c__,p] :> Eps[c,mu]
-		} /. deriv -> Derivative;
+
+		dListEval = fourVectorDiffEval[dList /. (deriv[__][fadHead][__]) -> 1,deriv,p,mu] /. deriv -> Derivative;
 
 		repRuleFinal = Thread[Rule[dList,dListEval]];
 		FCPrint[3, "FourDivergence: fourDerivative: Final replacement list: ", repRuleFinal, FCDoControl->fdVerbose];
@@ -275,6 +252,19 @@ fourDerivative[x_, ve_]:=
 
 		res
 	];
+
+fourVectorDiffEval[ex_,head_,p_,mu_]:=
+	ex /. {
+		head[1, 0][Pair][p,  a_] 		:> Pair[a, mu] ,
+		head[0, 1][Pair][a_, p] 		:> Pair[a, mu] ,
+		head[1,0][DiracGamma][p,dim_]	:> DiracGamma[mu,dim] ,
+		head[1][DiracGamma][p]			:> DiracGamma[mu] ,
+		head[1,0,0,0][Eps][p,c__]		:> Eps[mu,c] ,
+		head[0,1,0,0][Eps][a_,p,c__]	:> Eps[a,mu,c] ,
+		head[0,0,1,0][Eps][a__,p,c_]	:> Eps[a,mu,c] ,
+		head[0,0,0,1][Eps][c__,p]		:> Eps[c,mu]
+	};
+
 
 FCPrint[1,"FourDivergence.m loaded."];
 End[]

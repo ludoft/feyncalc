@@ -17,13 +17,10 @@
 (* ------------------------------------------------------------------------ *)
 
 FeynAmpDenominatorSimplify::usage =
-"FeynAmpDenominatorSimplify[exp] simplifies each \
-PropagatorDenominator in a canonical way. \n
-FeynAmpDenominatorSimplify[exp, q1] simplifies \
-all FeynAmpDenominator's in exp in a canonical way, \
-including some translation of momenta. \n
-FeynAmpDenominatorSimplify[exp, q1, q2] additionally \
-removes 2-loop integrals with no mass scale.";
+"FeynAmpDenominatorSimplify[exp] tries to simplify each PropagatorDenominator
+in a canonical way. FeynAmpDenominatorSimplify[exp, q1] simplifies all
+FeynAmpDenominators in exp in a canonical way, including momentum shifts.
+Scaleless integrals are discarded.";
 
 FDS::usage =
 "FDS is shorthand for FeynAmpDenominatorSimplify.";
@@ -36,8 +33,9 @@ FDS::failmsg = "Error! FDS has encountered a fatal problem and must abort the co
 The problem reads: `1`";
 
 DetectLoopTopologies::usage=
-"DetectLoopTopologies is an option for FDS. If set to True, FDS will try to recognize some \n
-special multiloop topologies and apply appropriate simplifications";
+"DetectLoopTopologies is an option for FDS. If set to True, FDS will try to
+recognize some special multiloop topologies and apply appropriate
+simplifications";
 
 (* ------------------------------------------------------------------------ *)
 
@@ -66,13 +64,11 @@ Options[FeynAmpDenominatorSimplify] = {
 	Collecting 					-> True,
 	DetectLoopTopologies		-> True,
 	ExpandScalarProduct			-> True,
-	FC2RHI						-> False,
 	FCE							-> False,
 	FCI							-> False,
 	FCVerbose					-> False,
 	Factoring					-> Factor,
 	FeynAmpDenominatorCombine	-> True,
-	IncludePair 				-> False,
 	IntegralTable 				-> {},
 	Rename 						-> True
 };
@@ -173,7 +169,7 @@ FeynAmpDenominatorSimplify[expr_, qs___/;FreeQ[{qs},Momentum], opt:OptionsPatter
 		time=AbsoluteTime[];
 		solsList = intsUnique /. {
 			(loopHead|sLoopHead|cLoopHead)[z_,{l_}] :> fdsOneLoop[z,l],
-			mLoopHead[z_,{l_}] :> (ToSFAD[z] /. FeynAmpDenominator :> feynord[{l}]),
+			mLoopHead[z_,{l_}] :> (ToSFAD[z,FCI->True] /. FeynAmpDenominator :> feynord[{l}]),
 			loopHead[z_,{l1_,l2_}] :> multiLoopHead[oldFeynAmpDenominatorSimplify[z,l1,l2,opt]],
 			loopHead[z_,{l1_,l2_, l3__}] :> multiLoopHead[fdsMultiLoop[z,l1,l2,l3]],
 			sLoopHead[z_,{_,__}] :> z,
@@ -339,6 +335,9 @@ procanSFAD[a_, rest__] :=
 	Block[{tt, one, numfac},
 		tt = Factor2[one MomentumExpand[a]];
 		numfac = NumericalFactor[tt];
+		If[	!FreeQ[numfac,Complex],
+			Return[StandardPropagatorDenominator[Expand[tt /. one -> 1], rest]];
+		];
 		If[TrueQ[numfac < 0 && MatchQ[numfac, _Rational | _Integer]],
 			StandardPropagatorDenominator[Expand[-tt /. one -> 1], rest],
 			StandardPropagatorDenominator[Expand[tt /. one -> 1], rest]
@@ -349,6 +348,9 @@ procanCFAD[a_, rest__] :=
 	Block[{tt, one, numfac},
 		tt = Factor2[one MomentumExpand[a]];
 		numfac = NumericalFactor[tt];
+		If[	!FreeQ[numfac,Complex],
+			CartesianPropagatorDenominator[Expand[tt /. one -> 1], rest]
+		];
 		If[TrueQ[numfac < 0 && MatchQ[numfac, _Rational | _Integer]],
 			CartesianPropagatorDenominator[Expand[-tt /. one -> 1], rest],
 			CartesianPropagatorDenominator[Expand[tt /. one -> 1], rest]
@@ -1167,20 +1169,8 @@ oldFeynAmpDenominatorSimplify[ex_, q1_, q2_/;Head[q2]=!=Rule, opt:OptionsPattern
 		FCPrint[3,"FDS: oldFeynAmpDenominatorSimplify: Before fadall", exp, "", FCDoControl->fdsVerbose];
 
 		If[ Head[exp] =!= Plus,
-			If[	OptionValue[Options[FDS],{opt},FC2RHI],
-				(* This is OPE related stuff with FC2RHI *)
-				res = FC2RHI[FixedPoint[fadalll[#, q1, q2]&, Expand2[exp, q1], 7] /. pru, q1, q2, IncludePair -> (IncludePair /. {opt} /.	Options[FDS])],
-				(* This is the usual routine *)
-				res = FixedPoint[fadalll[#, q1, q2]&, Expand2[exp, q1], 7] /. pru
-			],
-			res = SelectFree[exp, {q1,q2}] +
-			If[ (FC2RHI /. {opt} /. Options[FDS]),
-				(* This is OPE related stuff with FC2RHI *)
-				FC2RHI[FixedPoint[fadalll[#, q1, q2]&, exp-SelectFree[exp,{q1,q2}], 7] /. pru, q1, q2,
-				IncludePair -> (IncludePair /. {opt} /.	Options[FDS])],
-				(* This is the usual routine *)
-				FixedPoint[fadalll[#, q1, q2]&,	exp-SelectFree[exp,{q1,q2}], 7] /. pru
-			]
+			res = FixedPoint[fadalll[#, q1, q2]&, Expand2[exp, q1], 7] /. pru,
+			res = SelectFree[exp, {q1,q2}] + (FixedPoint[fadalll[#, q1, q2]&,	exp-SelectFree[exp,{q1,q2}], 7] /. pru)
 		];
 
 		FCPrint[3,"FDS: oldFeynAmpDenominatorSimplify: Before ApartFF", res, "", FCDoControl->fdsVerbose];

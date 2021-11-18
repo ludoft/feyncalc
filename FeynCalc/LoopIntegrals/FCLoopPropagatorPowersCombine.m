@@ -16,7 +16,7 @@
 (* ------------------------------------------------------------------------ *)
 
 FCLoopPropagatorPowersCombine::usage =
-"FCLoopPropagatorPowersCombine[exp] combines the same propagators in a \
+"FCLoopPropagatorPowersCombine[exp] combines the same propagators in a
 FeynAmpDenominator to one propagator raised to an integer power.";
 
 FCLoopPropagatorPowersCombine::failmsg =
@@ -49,7 +49,7 @@ FCLoopPropagatorPowersCombine[expr_, OptionsPattern[]] :=
 
 		fadsList = Cases2[ex, FeynAmpDenominator];
 
-		fadsListEval = fadsList /. FeynAmpDenominator -> FeynCalc`Package`fdsor /. FeynAmpDenominator -> fad /. {
+		fadsListEval = fadsList /. FeynAmpDenominator -> FeynCalc`Package`fdsor /. FeynAmpDenominator -> fad //. {
 			fad[a___,
 				(h:StandardPropagatorDenominator|CartesianPropagatorDenominator|GenericPropagatorDenominator)[x__, {n1_Integer,s_}],
 				(h:StandardPropagatorDenominator|CartesianPropagatorDenominator|GenericPropagatorDenominator)[x__, {n2_Integer,s_}],
@@ -70,10 +70,6 @@ FCLoopPropagatorPowersCombine[expr_, OptionsPattern[]] :=
 
 
 	];
-
-
-
-
 
 
 FCPrint[1,"FCLoopPropagatorPowersCombine.m loaded."];

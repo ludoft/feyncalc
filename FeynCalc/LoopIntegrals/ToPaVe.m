@@ -17,16 +17,18 @@
 (* ------------------------------------------------------------------------ *)
 
 
-ToPaVe::usage = "ToPaVe[exp,q] converts all scalar 1-loop integrals in exp that \
-depend on the momentum q to scalar Passarino Veltman functions \
-A0, B0, C0, D0 etc.";
+ToPaVe::usage =
+"ToPaVe[exp, q]  converts all scalar 1-loop integrals in exp that depend on the
+momentum q to scalar Passarino Veltman functions A0, B0, C0, D0 etc.";
 
-OtherLoopMomenta::usage = "OtherLoopMomenta is an option of ToPaVe. It takes \
-a list of loop momenta other than q that appear in the expression. Knowing \
-about these momenta prevents ToPaVe from erroneously converting multiloop \
-integrals into PaVe scalar functions. This is of course relevant only for \
-multiloop calculations. For 1-loop you don't need to specify this option \
-explicitly.";
+OtherLoopMomenta::usage =
+"OtherLoopMomenta is an option of ToPaVe. It takes a list of loop momenta other
+than q that appear in the expression. Knowing about these momenta prevents
+ToPaVe from erroneously converting multi-loop integrals into PaVe scalar
+functions.
+
+This is of course relevant only for multi-loop calculations. At 1-loop you
+don't need to specify this option explicitly.";
 
 ToPaVe::failmsg =
 "Error! ToPaVe has encountered a fatal problem and must abort the computation. \
@@ -52,7 +54,8 @@ Options[ToPaVe] = {
 	OtherLoopMomenta	-> {},
 	PaVeAutoOrder		-> True,
 	PaVeAutoReduce		-> True,
-	PaVeOrder			-> True
+	PaVeOrder			-> True,
+	PaVeToABCD			-> True
 };
 
 ToPaVe[expr_, q_, OptionsPattern[]] :=
@@ -91,6 +94,10 @@ ToPaVe[expr_, q_, OptionsPattern[]] :=
 		(* Not all SFADs can be converted to PaVe functions! *)
 		loopListEval = loopListEval /. toPaVe[z_,_,_,_]/;!FreeQ[z,StandardPropagatorDenominator] :> z;
 
+		If[ OptionValue[PaVeToABCD],
+			loopListEval = PaVeToABCD[loopListEval]
+		];
+
 		repList = Thread[Rule[loopList,loopListEval]];
 
 		res = (rel/. Dispatch[repList]) + irrel;
@@ -111,8 +118,7 @@ ToPaVe[expr_, q_, OptionsPattern[]] :=
 
 (* Determine kinematic invariants according to the conventions of Denner, c.f. arXiv:1604.06792 *)
 
-momentumRoutingDenner[moms_List, fu_] :=
-	MemSet[momentumRoutingDenner[moms, fu],
+momentumRoutingDenner[moms_List, fu_, OptionsPattern[]] :=
 	Block[{firstLines, lastLine, kmax = (Length[moms] + 1)/2, res, p, repRule},
 			repRule = Thread[Rule[Table[p[i], {i, 1, 2 kmax - 1}], moms]];
 			firstLines = Transpose[Table[(p[k + l] - p[l])//fu, {l, 0, 2 kmax - 1}, {k, 1, kmax - 1}]];
@@ -123,12 +129,10 @@ momentumRoutingDenner[moms_List, fu_] :=
 				Abort[]
 			];
 			(res /. Dispatch[repRule])
-		]
-	]/; OddQ[(Length[moms])]
+		]/; OddQ[(Length[moms])];
 
-momentumRoutingDenner[moms_List, fu_] :=
-	MemSet[momentumRoutingDenner[moms, fu],
-		Block[{firstLines, lastLine, kmax = (Length[moms])/2, res, p, repRule},
+momentumRoutingDenner[moms_List, fu_, OptionsPattern[]] :=
+	Block[{firstLines, lastLine, kmax = (Length[moms])/2, res, p, repRule},
 			repRule = Thread[Rule[Table[p[i], {i, 1, 2 kmax}], moms]];
 			res = Transpose[Table[(p[k + l] - p[l])//fu, {l, 0, 2 kmax}, {k, 1, kmax}]];
 			res = Flatten[res //. {p[2 kmax + 1] -> p[0], p[x_] /; (x > 2 kmax + 1) :> p[x - 2 kmax - 1], p[0] -> 0}];
@@ -137,8 +141,7 @@ momentumRoutingDenner[moms_List, fu_] :=
 				Abort[]
 			];
 			(res /. Dispatch[repRule])
-		]
-	]/; EvenQ[(Length[moms])]
+		]/; EvenQ[(Length[moms])];
 
 toPaVe[x_,_,_,_]:=
 	x/; !FreeQ2[Head[x],PaVeHeadsList];
